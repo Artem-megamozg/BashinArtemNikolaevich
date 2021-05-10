@@ -1,0 +1,168 @@
+Ключевые строчки кода
+
+target_triangle = np.float32([[130.0,120.0],[150.0,120.0],[140.0,160.0]])
+size = 300
+
+def affine_transform(img,attrs):
+    mc_x = (attrs['mouth_left']['x'] + attrs['mouth_right']['x'])/2.0
+    mc_y = (attrs['mouth_left']['y'] + attrs['mouth_right']['y']) / 2.0
+    tr = cv2.getAffineTransform(np.float32([(attrs['nose_root_left']['x'],attrs['nose_root_left']['y']),
+                                            (attrs['nose_root_right']['x'],attrs['nose_root_right']['y']),
+                                            (mc_x,mc_y)]), target_triangle)                                
+    return cv2.warpAffine(img,tr,(size,size))
+
+img_aligned = [affine_transform(i,a) for i,a in zip(images,imagepoints)]
+
+def merge(images,wts=None):
+    res = np.zeros_like(images[0],dtype=np.float32)
+    if wts is None:
+        wts = np.ones(len(images))
+    wts /= np.sum(wts)
+    for n,i in enumerate(images):
+        res += wts[n]*i.astype(np.float32)
+    return res.astype(np.ubyte)
+    
+    res = merge(img_aligned)
+plt.imshow(res)
+
+
+from math import sqrt
+
+from math import sin,cos,pi
+import numpy as np
+
+width = 2000
+height = 2000
+radius = 988
+n_ppl = 77
+da = pi/42
+
+def get_tri(i):
+    centr = [width/2, height*0.5]# if i%3 == 0 else [width*0.15, height*0.15] if i%3 == 1 else [width*0.85, height*0.15]
+    a = i*2*pi/100
+    x1 = centr[0]
+    y1 = centr[1]
+    x3 = x1 + radius*cos(a)
+    y3 = y1 + radius*sin(a+da)#rast_pup[i][0]*sin(a)
+    x2 = x1 + radius*cos(a-da)#rast_pup[i][0]*sin(a-da)#(sqrt(rast[i][0]**2 + rast[i][1]**2))*cos(a - alfa[i])
+    y2 = y1 + radius*sin(a-da)#rast_pup[i][0]*sin(a-da)#(sqrt(rast[i][0]**2 + rast[i][1]**2))*sin(a - alfa[i])
+    return [(x1,y1),(x2,y2),(x3,y3)]
+
+triangles = [ get_tri(i) for i in range(n_ppl)]
+
+def get_transform(f,flag):
+    flag = min(flag,len(triangles)-1)
+    mc_x = (f['mouth_left']['x'] + f['mouth_right']['x']) / 2.0
+    mc_y = (f['mouth_left']['y'] + f['mouth_right']['y']) / 2.0
+    return cv2.getAffineTransform(np.float32([(f['pupil_left']['x'],f['pupil_left']['y']),(f['pupil_right']['x'],f['pupil_right']['y']),(mc_x,mc_y)]),
+                                np.float32(triangles[flag]))
+
+def transform(img,pts,flag):
+    tr = get_transform(pts,flag)
+    return cv2.warpAffine(img,tr,(width,height))
+    
+    img_aligned = [transform(i,a,n%n_ppl) for i,a,n in zip(images,imagepoints,range(len(images)))]
+    
+    def merge(images,wts=None,normalize=True):
+    images = list(images)
+    res = np.zeros_like(images[0],dtype=np.float32)
+    if wts is None:
+        wts = np.ones(len(images))
+    wts /= np.sum(wts)
+    for n,i in enumerate(images):
+        res += wts[n]*i.astype(np.float32)
+    if normalize:
+        mi = res.min()
+        ma = res.max()
+        res = 255.0*(res-mi)/(ma-mi)
+    return res.astype(np.ubyte)
+    
+    res = merge(img_aligned)
+plt.imshow(res)
+
+def get_tri(i):
+    a = i*2*pi/n_ppl
+    x1 = width/2+radius*cos(a-da)
+    y1 = height/2+radius*sin(a-da)
+    x2 = width/2+radius*cos(a+da)
+    y2 = height/2+radius*sin(a+da)
+    x3 = width/2+(radius-150)*cos(a)
+    y3 = height/2+(radius-150)*sin(a)
+    return [(x1,y1),(x2,y2),(x3,y3)]
+
+triangles = [ get_tri(i) for i in range(n_ppl)]
+
+n_ppl = 28
+
+def get_transform(f,flag):
+    flag = min(flag,len(triangles)-1)
+    mc_x = (f['mouth_left']['x']+f['mouth_right']['x'])/2.0
+    mc_y = (f['mouth_left']['y'] + f['mouth_right']['y']) / 2.0
+    return cv2.getAffineTransform(np.float32([(f['nose_root_left']['x'],f['nose_root_left']['y']),(f['nose_root_right']['x'],f['nose_root_right']['y']),(mc_x,mc_y)]),
+                                np.float32(triangles[flag]))
+
+def transform(img,pts,flag):
+    tr = get_transform(pts,flag)
+    return cv2.warpAffine(img,tr,(width,height))
+
+img_aligned = [transform(i,a,n%n_ppl) for i,a,n in zip(images,imagepoints,range(len(images)))]
+
+res = merge(img_aligned)
+plt.imshow(res)
+
+from math import sin,cos,pi
+import numpy as np
+
+width = 2000
+height = 2000
+radius = 800
+n_ppl = 6
+da = 2*pi/360*5
+
+def get_tri(i):
+    a = i*2*pi/n_ppl
+    x1 = width/2+radius*cos(a-da)
+    y1 = height/2+radius*sin(a-da)
+    x2 = width/2+radius*cos(a+da)
+    y2 = height/2+radius*sin(a+da)
+    x3 = width/2+(radius-150)*cos(a)
+    y3 = height/2+(radius-150)*sin(a)
+    return [(x1,y1),(x2,y2),(x3,y3)]
+
+triangles = [ get_tri(i) for i in range(n_ppl)]
+
+def get_transform(f,flag):
+    flag = min(flag,len(triangles)-1)
+    mc_x = (f['mouth_left']['x']+f['mouth_right']['x'])/2.0
+    mc_y = (f['mouth_left']['y'] + f['mouth_right']['y']) / 2.0
+    return cv2.getAffineTransform(np.float32([(f['pupil_left']['x'],f['pupil_left']['y']),(f['pupil_right']['x'],f['pupil_right']['y']),(mc_x,mc_y)]),
+                                np.float32(triangles[flag]))
+
+def transform(img,pts,flag):
+    tr = get_transform(pts,flag)
+    return cv2.warpAffine(img,tr,(width,height))
+    
+    img_aligned = [transform(i,a,n%n_ppl) for i,a,n in zip(images,imagepoints,range(len(images)))]
+    
+    def merge(images,wts=None,normalize=True):
+    images = list(images)
+    res = np.zeros_like(images[0],dtype=np.float32)
+    if wts is None:
+        wts = np.ones(len(images))
+    wts /= np.sum(wts)
+    for n,i in enumerate(images):
+        res += wts[n]*i.astype(np.float32)
+    if normalize:
+        mi = res.min()
+        ma = res.max()
+        res = 255.0*(res-mi)/(ma-mi)
+    return res.astype(np.ubyte)
+    
+    res = merge(img_aligned)
+plt.imshow(res)
+
+def merge(imgs):
+    return (np.average(np.array(imgs)/255.,axis=0)*255).astype(np.ubyte)
+    
+    res = merge(img_aligned)
+plt.imshow(res)
